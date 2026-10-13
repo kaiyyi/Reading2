@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Baca Acak</title>
+<style>
+  :root{--bg:#faf7f2;--card:#ffffff;--text:#2b2b2b;--muted:#7a7a7a;--accent:#c4663a;--line:#eadfd3;}
+  @media (prefers-color-scheme:dark){
+    :root{--bg:#1c1b1a;--card:#262524;--text:#eeeeee;--muted:#a09b95;--accent:#e08a5f;--line:#3a3836;}
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:Georgia,"Times New Roman",serif;line-height:1.5}
+  .wrap{max-width:640px;margin:0 auto;padding:32px 20px 60px}
+  h1{margin:0 0 4px;font-size:28px}
+  .date{color:var(--muted);margin:0 0 20px}
+  .stats{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:24px}
+  .stat{flex:1;min-width:140px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 16px}
+  .stat b{display:block;font-size:22px;color:var(--accent)}
+  .stat span{color:var(--muted);font-size:14px}
+  .bar{height:6px;background:var(--line);border-radius:3px;margin-top:8px;overflow:hidden}
+  .bar i{display:block;height:100%;background:var(--accent);width:0}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:12px}
+  .card.done{opacity:.55}
+  .card.done .title{text-decoration:line-through}
+  .num{color:var(--muted);font-size:13px;margin-bottom:4px}
+  .title{font-size:18px;margin-bottom:12px}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  a.open{background:var(--accent);color:#fff;text-decoration:none;padding:8px 16px;border-radius:8px;font-family:Arial,sans-serif;font-size:14px}
+  label{display:flex;align-items:center;gap:8px;cursor:pointer;font-family:Arial,sans-serif;font-size:14px}
+  input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent)}
+  .finish{text-align:center;color:var(--accent);font-size:18px;margin:20px 0}
+  .reset{margin-top:36px;text-align:center}
+  .reset button{background:none;border:1px solid var(--line);color:var(--muted);padding:8px 14px;border-radius:8px;cursor:pointer;font-size:13px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Baca Acak</h1>
+  <p class="date" id="date"></p>
+  <div class="stats">
+    <div class="stat"><b id="todayCount">0/5</b><span>Hari ini</span><div class="bar"><i id="todayBar"></i></div></div>
+    <div class="stat"><b id="totalCount">0/50</b><span id="roundLabel">Putaran 1</span><div class="bar"><i id="totalBar"></i></div></div>
+  </div>
+  <div id="list"></div>
+  <div class="finish" id="finish" style="display:none">Selesai untuk hari ini. Sampai besok!</div>
+  <div class="reset"><button id="resetBtn">Reset semua progres</button></div>
+</div>
+
+<script>
+// ============================================================
+// DAFTAR CERITA. Untuk nambah cerita baru, tambah satu baris
+// baru di bawah (copy format baris lain), jangan lupa koma di akhir.
+// ============================================================
+const STORIES = [
+  {t:"Love Letters to the Girls Who Are Too Hard on Themselves", u:"https://substack.com/@leidiinspired/note/p-155844060?utm_source=notes-share-action&r=96stsm"},
+  {t:"Bila tubuhku membiru akankah kau datang, sayang ?", u:"https://substack.com/@senyapkalbu/note/p-206531509?utm_source=notes-share-action&r=96stsm"},
+  {t:"does knowing me more lead into loving me less?", u:"https://substack.com/@lefranhan/note/p-210616038?utm_source=notes-share-action&r=96stsm"},
+  {t:"Boleh tidak aku memintamu mencintaiku dengan cara yang paling berisik? Sebab, diriku sepi sekali, Sayang.", u:"https://substack.com/@rainthalogy/note/p-216572419?utm_source=notes-share-action&r=96stsm"},
+  {t:"Kalau Perempuan Dipanggil Jalang, Lalu Laki-Laki Disebut Apa?", u:"https://substack.com/@serayumelintangbumi/note/p-214322437?utm_source=notes-share-action&r=96stsm"},
+  {t:"I wanted to be loved the way I love", u:"https://substack.com/@soulaced/note/p-206441589?utm_source=notes-share-action&r=96stsm"},
+  {t:"Kita diciptakan untuk hal-hal besar", u:"https://substack.com/@heybii/note/p-213486122?utm_source=notes-share-action&r=96stsm"},
+  {t:"The morning after I killed myself", u:"https://substack.com/@ceciliia/note/p-184772623?utm_source=notes-share-action&r=96stsm"},
+  {t:"to speak or to die?", u:"https://substack.com/@xahraa/note/p-204352546?utm_source=notes-share-action&r=96stsm"},
+  {t:"Aku Ingin Pesan Seporsi Kasih Sayangmu Tanpa Keraguan. Berapa Harganya, Tuan?", u:"https://substack.com/@prisnarafi/note/p-216137902?utm_source=notes-share-action&r=96stsm"},
+  {t:"kumohon mudahkan hidupnya", u:"https://substack.com/@lettersfromjingga/note/p-215496903?utm_source=notes-share-action&r=96stsm"},
+  {t:"I Lost My Spark But I'm Still Here", u:"https://substack.com/@4yudyaa/note/p-209793270?utm_source=notes-share-action&r=96stsm"},
+  {t:"Apakah Intelektualisme hanya Untuk Mereka yang Punya Privilege?", u:"https://substack.com/@miftachansari/note/p-210989547?utm_source=notes-share-action&r=96stsm"},
+  {t:"Mungkin, Selamanya Aku Akan Menjadi Anak yang Pemarah", u:"https://substack.com/@serayumelintangbumi/note/p-212158179?utm_source=notes-share-action&r=96stsm"},
+  {t:"I Have a Delusional Mindset That I am Allah’s Favourite", u:"https://substack.com/@queqila/note/p-190691546?utm_source=notes-share-action&r=96stsm"},
+  {t:"Allah swt Is to You as You See Him", u:"https://substack.com/@wheremyheartwrites/note/p-179832105?utm_source=notes-share-action&r=96stsm"},
+  {t:"Perasaan jatuh cinta sialan. Aku benci ketika melihat diriku mencintai seseorang secara berlebihan.", u:"https://substack.com/@baemerry/note/p-216898688?utm_source=notes-share-action&r=96stsm"},
+  {t:"Aku Tidak Cemburu, Aku Hanya Belum Memiliki Musim untuk Memanggilmu Milikku", u:"https://substack.com/@stafianm/note/p-212996630?utm_source=notes-share-action&r=96stsm"},
+  {t:"Semoga Suatu Hari Semesta Mendukung Kita Untuk Bertemu Lagi, Ya", u:"https://substack.com/@who0isnancy/note/p-217175364?utm_source=notes-share-action&r=96stsm"},
+  {t:"Andai kamu tahu, sejak mengenalmu aku ingin memperbaiki banyak hal dalam diri ini", u:"https://substack.com/@strawberiesdiary/note/p-216534862?utm_source=notes-share-action&r=96stsm"},
+  {t:"Aku juga ingin sekali saja dipahami tanpa harus menjelaskan", u:"https://substack.com/@errornastar/note/p-212299694?utm_source=notes-share-action&r=96stsm"},
+  {t:"Bagaimana Memaafkan Seseorang yang Tidak Pernah Meminta Maaf?", u:"https://substack.com/@dildila/note/p-211491939?utm_source=notes-share-action&r=96stsm"},
+  {t:"Selamat Melupa, Semoga Tidak Berjumpa", u:"https://substack.com/@selasarkalalily/note/p-213120211?utm_source=notes-share-action&r=96stsm"},
+  {t:"Kita Adalah Monster Tanpa Nama", u:"https://substack.com/@iwianggita/note/p-202124769?utm_source=notes-share-action&r=96stsm"},
+  {t:"Tolong Hidup Lebih Lama Ya, Ma", u:"https://substack.com/@underwillows/note/p-203067686?utm_source=notes-share-action&r=96stsm"},
+  {t:"And Please, If It's Not Meant For me, Let Me Stop Yearning For It.", u:"https://substack.com/@feifeiwrites/note/p-197335581?utm_source=notes-share-action&r=96stsm"},
+  {t:"Untukmu, tokoh favorit hidupku...", u:"https://substack.com/@ansaaksaa/note/p-212980966?utm_source=notes-share-action&r=96stsm"},
+  {t:"Jatuh Suka", u:"https://substack.com/@bloomoire/note/p-214392968?utm_source=notes-share-action&r=96stsm"},
+  {t:"She Was Poetry, But He Couldn't Read", u:"https://substack.com/@winterfern/note/p-216384523?utm_source=notes-share-action&r=96stsm"},
+  {t:"Jatuh Cinta Akan Menjadi Perkara yang Sulit Jika Kita Tidak Pernah Dicintai", u:"https://substack.com/@selasarkalalily/note/p-211507699?utm_source=notes-share-action&r=96stsm"},
+  {t:"Aku Berharap Ada Seseorang yang Cukup Mencintaiku Hingga Memintaku Untuk Berada di Surga", u:"https://substack.com/@snctuary/note/p-209641222?utm_source=notes-share-action&r=96stsm"},
+  {t:"God, if I’m meant to be alone, take away my desire to be loved.", u:"https://substack.com/@anadelmarwrites/note/p-186897797?utm_source=notes-share-action&r=96stsm"},
+  {t:"Buang aku lalu lahirlah kembali, Ma.", u:"https://substack.com/@xwordsmith/note/p-215852604?utm_source=notes-share-action&r=96stsm"},
+  {t:"Meromantisasi \"In Another Life\" untuk membuat penyesalan terdengar lebih puitis.", u:"https://substack.com/@achaej/note/p-208987715?utm_source=notes-share-action&r=96stsm"},
+  {t:"Tidak Semua Perhatian Bisa Kau Sebut Cinta", u:"https://substack.com/@notesbytasia/note/p-214313476?utm_source=notes-share-action&r=96stsm"},
+  {t:"Untuk Kamu, Yang Biasa Saja.", u:"https://substack.com/@byu777/note/p-215148182?utm_source=notes-share-action&r=96stsm"},
+  {t:"Jikalau perasaan ini sampai, kutumpahkan segala kerinduan untukmu", u:"https://substack.com/@salsaamelia/note/p-215653050?utm_source=notes-share-action&r=96stsm"},
+  {t:"seribu aksara nampaknya akan langsung runtuh jika kau memanggilku dengan sebutan “sayang”", u:"https://substack.com/@1blueinwords/note/p-210722160?utm_source=notes-share-action&r=96stsm"},
+  {t:"Memandang Dunia dari Kacamata Seorang Ibu", u:"https://substack.com/@ansletters/note/p-212013947?utm_source=notes-share-action&r=96stsm"},
+  {t:"Berdukalah Sedalam-dalamnya, Lalu Tumbuhlah Seluas-luasnya", u:"https://substack.com/@selasarkalalily/note/p-215438838?utm_source=notes-share-action&r=96stsm"},
+  {t:"If a birds falls in love with a fish, where will they live?", u:"https://substack.com/@seizei/note/p-206972357?utm_source=notes-share-action&r=96stsm"},
+  {t:"Mari merayakan semua yang tidak pernah kamu rayakan saat kecil", u:"https://substack.com/@whosorva/note/p-212361736?utm_source=notes-share-action&r=96stsm"},
+  {t:"Friends to Lovers Is the Way to Go in My Opinion", u:"https://substack.com/@ayshehe/note/p-201756346?utm_source=notes-share-action&r=96stsm"},
+  {t:"Biruku ada padamu", u:"https://substack.com/@aosoradiary/note/p-215236248?utm_source=notes-share-action&r=96stsm"},
+  {t:"Kamu Hanya Ada Satu di Dunia, jadi Jangan Hilang", u:"https://substack.com/@bibabercerita/note/p-213254071?utm_source=notes-share-action&r=96stsm"},
+  {t:"Bolehkah Aku Berharap, Kamu Juga Merindukanku?", u:"https://substack.com/@fioresa/note/p-218200656?utm_source=notes-share-action&r=96stsm"},
+  {t:"Jangan meragukan perasaanku, aku bahkan sudah berhenti mencari sejak mengenalmu", u:"https://substack.com/@strawberiesdiary/note/p-217836048?utm_source=notes-share-action&r=96stsm"},
+  {t:"Pulihlah dengan Tenang, Mekarlah dengan Lapang", u:"https://substack.com/@mairias/note/p-211700896?utm_source=notes-share-action&r=96stsm"},
+  {t:"Tuhan, masih layakkah aku bersujud?", u:"https://substack.com/@tiramaa/note/p-216234562?utm_source=notes-share-action&r=96stsm"},
+  {t:"Aku dan Kamu, yang Tidak Jadi Kita", u:"https://substack.com/@petalfaint/note/p-215381250?utm_source=notes-share-action&r=96stsm"}
+];
+
+// ============================================================
+// Di bawah ini adalah mesin webnya. Tidak perlu diubah.
+// ============================================================
+const PER_DAY = 5;
+const KEY = "bacaAcak_v1";
+
+function todayStr(){
+  const d = new Date();
+  return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+}
+function shuffle(arr){
+  const a = arr.slice();
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]] = [a[j],a[i]];
+  }
+  return a;
+}
+function load(){
+  try{
+    const s = JSON.parse(localStorage.getItem(KEY));
+    if(s && Array.isArray(s.read)) return s;
+  }catch(e){}
+  return {read:[], round:1, date:"", picks:[], done:[]};
+}
+function save(){
+  try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){}
+}
+
+let state = load();
+const allUrls = STORIES.map(s => s.u);
+const byUrl = {};
+STORIES.forEach(s => byUrl[s.u] = s);
+
+function pickForToday(){
+  state.read = state.read.filter(u => allUrls.includes(u));
+  const pool = allUrls.filter(u => !state.read.includes(u));
+  let picks = shuffle(pool).slice(0, PER_DAY);
+  if(picks.length < PER_DAY){
+    // semua cerita sudah dibaca, mulai putaran baru
+    state.round++;
+    state.read = [];
+    const rest = shuffle(allUrls.filter(u => !picks.includes(u)));
+    picks = picks.concat(rest.slice(0, PER_DAY - picks.length));
+  }
+  state.date = todayStr();
+  state.picks = picks;
+  state.done = [];
+  save();
+}
+
+function toggle(u, checked){
+  if(checked){
+    if(!state.done.includes(u)) state.done.push(u);
+    if(!state.read.includes(u)) state.read.push(u);
+  }else{
+    state.done = state.done.filter(x => x !== u);
+    state.read = state.read.filter(x => x !== u);
+  }
+  save();
+  render();
+}
+
+function render(){
+  document.getElementById("date").textContent =
+    new Date().toLocaleDateString("id-ID", {weekday:"long", day:"numeric", month:"long", year:"numeric"});
+
+  const total = state.picks.length;
+  const doneCount = state.done.filter(u => state.picks.includes(u)).length;
+  document.getElementById("todayCount").textContent = doneCount + "/" + total;
+  document.getElementById("todayBar").style.width = (total ? doneCount/total*100 : 0) + "%";
+
+  const readCount = state.read.length;
+  document.getElementById("totalCount").textContent = readCount + "/" + STORIES.length;
+  document.getElementById("totalBar").style.width = (readCount/STORIES.length*100) + "%";
+  document.getElementById("roundLabel").textContent = "Putaran " + state.round;
+
+  const list = document.getElementById("list");
+  list.innerHTML = "";
+  state.picks.forEach((u, i) => {
+    const s = byUrl[u];
+    if(!s) return;
+    const isDone = state.done.includes(u);
+
+    const card = document.createElement("div");
+    card.className = "card" + (isDone ? " done" : "");
+
+    const num = document.createElement("div");
+    num.className = "num";
+    num.textContent = "Cerita " + (i+1);
+
+    const title = document.createElement("div");
+    title.className = "title";
+    title.textContent = s.t;
+
+    const row = document.createElement("div");
+    row.className = "row";
+
+    const a = document.createElement("a");
+    a.className = "open";
+    a.href = s.u;
+    a.target = "_blank";
+    a.rel = "noopener";
+    a.textContent = "Buka cerita";
+
+    const label = document.createElement("label");
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.checked = isDone;
+    cb.addEventListener("change", () => toggle(u, cb.checked));
+    label.appendChild(cb);
+    label.appendChild(document.createTextNode("Sudah dibaca"));
+
+    row.appendChild(a);
+    row.appendChild(label);
+    card.appendChild(num);
+    card.appendChild(title);
+    card.appendChild(row);
+    list.appendChild(card);
+  });
+
+  document.getElementById("finish").style.display =
+    (total > 0 && doneCount >= total) ? "block" : "none";
+}
+
+document.getElementById("resetBtn").addEventListener("click", () => {
+  if(confirm("Yakin mau reset semua progres? Ini akan mengosongkan semua ceklis dan mengacak ulang.")){
+    state = {read:[], round:1, date:"", picks:[], done:[]};
+    pickForToday();
+    render();
+  }
+});
+
+// Jalankan saat halaman dibuka
+state.picks = (state.picks || []).filter(u => allUrls.includes(u));
+if(state.date !== todayStr() || state.picks.length === 0){
+  pickForToday();
+}
+render();
+</script>
+</body>
+</html>
